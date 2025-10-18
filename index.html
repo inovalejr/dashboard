@@ -1,21 +1,23 @@
+<!--
+  Painel de Atividades e Calendário Interativo
+  Objetivo: Dashboard com calendário, gráfico empilhado por status, e gráficos de análise de progresso e duração,
+  incluindo análise de texto por IA (OpenAI).
+-->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Avançado de Projetos</title>
-
-    <!-- Tailwind CSS -->
+    <!-- Carrega Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Chart.js -->
+    <!-- Carrega Chart.js para gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
-
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7fafc;
-        }
+        /* Configuração de Fonte Padrão */
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        
+        /* Estilos do Calendário */
         .calendar-day-wrapper {
             display: flex;
             flex-direction: column;
@@ -34,20 +36,20 @@
             font-weight: normal;
         }
         .calendar-day-num.active {
-            background-color: #4CAF50;
+            background-color: #4CAF50; /* Verde escuro para dias com atividade */
             color: white;
             font-weight: bold;
             cursor: pointer;
         }
         .calendar-day-num.selected {
-            background-color: #2e7d32;
+            background-color: #2e7d32; /* Verde mais escuro para o dia selecionado */
         }
         .calendar-day-num:hover:not(.empty) {
             background-color: #d1fae5;
             cursor: pointer;
         }
         .calendar-day-num.empty {
-            color: #a0aec0;
+            color: #a0aec0; /* Cinza claro para dias fora do mês */
         }
         .activity-count-badge {
             font-size: 0.65rem;
@@ -62,46 +64,47 @@
     </style>
 </head>
 <body class="p-4 md:p-8">
-    <div class="max-w-7xl mx-auto">
 
-        <!-- HEADER -->
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- HEADER / TÍTULO -->
         <header class="mb-6 pb-4 border-b border-gray-200">
             <h1 class="text-3xl font-bold text-gray-800">Análise de Projetos e Atividades</h1>
             <p class="text-gray-500">Dashboard integrado com busca por data e análise de progresso.</p>
         </header>
 
-        <!-- INPUT CSV -->
+        <!-- INPUT DE ARQUIVO CSV -->
         <div class="mb-6 p-4 bg-white shadow-lg rounded-lg">
             <label for="csvFileInput" class="block text-sm font-medium text-gray-700 mb-2">
-                Carregar Arquivo CSV de Atividades (colunas: SITE, SUPERVISOR, STATUS DO PROJETO, DATA INICIAL, DATA FINAL)
+                Carregar Arquivo CSV de Atividades (Deve incluir colunas: SITE, SUPERVISOR, STATUS DO PROJETO, DATA INICIAL, DATA FINAL)
             </label>
             <input type="file" id="csvFileInput" accept=".csv" class="w-full text-sm text-gray-500
-            file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold
-            file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
-            <p id="fileStatus" class="mt-2 text-sm text-gray-500"></p>
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-emerald-50 file:text-emerald-700
+                hover:file:bg-emerald-100 cursor-pointer"
+            >
+            <p id="fileStatus" class="mt-2 text-sm text-gray-500">Aguardando carregamento do arquivo...</p>
         </div>
 
-        <!-- DASHBOARD CONTAINER -->
+        <!-- DASHBOARD CONTAINER (GRÁFICO EMPILHADO E CALENDÁRIO) -->
         <div class="flex flex-col lg:flex-row gap-6">
-
-            <!-- GRÁFICO EMPILHADO -->
+            
+            <!-- COLUNA DO GRÁFICO EMPILHADO (W-2/3) -->
             <div class="lg:w-2/3 bg-white p-6 shadow-lg rounded-lg order-2 lg:order-1">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
-                    Contagem de Projetos por Status Diário (Baseado na Data de Término)
-                </h2>
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Contagem de Projetos por Status Diário (Baseado na Data de Término)</h2>
                 <div class="h-96">
                     <canvas id="activitiesChart"></canvas>
                 </div>
-                <p class="text-center text-gray-500 text-sm mt-4">
-                    Gráfico empilhado mostrando a distribuição dos status de projetos por dia.
-                </p>
+                <p class="text-center text-gray-500 text-sm mt-4">Gráfico empilhado mostrando a distribuição dos status de projetos por dia.</p>
             </div>
 
-            <!-- CALENDÁRIO E ESTATÍSTICAS -->
+            <!-- COLUNA DO CALENDÁRIO E ESTATÍSTICAS (W-1/3) -->
             <div class="lg:w-1/3 bg-white p-6 shadow-lg rounded-lg order-1 lg:order-2">
                 <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Seletor de Data</h2>
 
-                <!-- ESTATÍSTICAS -->
+                <!-- ESTATÍSTICAS CHAVE -->
                 <div class="mb-6 p-4 bg-gray-50 rounded-lg">
                     <div class="text-sm font-medium text-gray-500">Total de Projetos no Período</div>
                     <div id="totalActivities" class="text-3xl font-bold text-emerald-600">0</div>
@@ -112,33 +115,43 @@
                 <!-- CALENDÁRIO -->
                 <div id="calendarContainer" class="calendar text-center">
                     <div class="flex justify-between items-center mb-3">
-                        <button onclick="changeMonth(-1)" class="p-2 rounded-full hover:bg-gray-200 text-gray-700">&lt;</button>
+                        <button onclick="changeMonth(-1)" class="p-2 rounded-full hover:bg-gray-200 text-gray-700">
+                            &lt;
+                        </button>
                         <h3 id="currentMonthYear" class="text-lg font-semibold text-gray-800"></h3>
-                        <button onclick="changeMonth(1)" class="p-2 rounded-full hover:bg-gray-200 text-gray-700">&gt;</button>
+                        <button onclick="changeMonth(1)" class="p-2 rounded-full hover:bg-gray-200 text-gray-700">
+                            &gt;
+                        </button>
                     </div>
                     <div class="grid grid-cols-7 text-xs font-medium text-gray-500 mb-2">
-                        <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span>
-                        <span>Qui</span><span>Sex</span><span>Sáb</span>
+                        <span>Dom</span>
+                        <span>Seg</span>
+                        <span>Ter</span>
+                        <span>Qua</span>
+                        <span>Qui</span>
+                        <span>Sex</span>
+                        <span>Sáb</span>
                     </div>
-                    <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-sm"></div>
+                    <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-sm">
+                        <!-- Dias do calendário serão inseridos aqui pelo JS -->
+                    </div>
                 </div>
             </div>
+            
         </div>
-
-        <!-- PAINEL DETALHES ATIVIDADE -->
+        
+        <!-- PAINEL DE DETALHES DA ATIVIDADE -->
         <div class="mt-6 bg-white p-6 shadow-lg rounded-lg">
-            <h2 id="detailTitle" class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
-                Detalhes da Atividade (Selecione um Dia)
-            </h2>
+            <h2 id="detailTitle" class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Detalhes da Atividade (Selecione um Dia)</h2>
             <div id="activityDetailTable" class="overflow-x-auto">
                 <p class="text-gray-500">Clique em um dia destacado no calendário para ver a lista de projetos.</p>
             </div>
         </div>
 
-        <!-- GRÁFICOS DE DURAÇÃO E PROGRESSO -->
+        <!-- PAINEL DE ANÁLISES ADICIONAIS (GRÁFICOS DE DURAÇÃO E PROGRESSO) -->
         <div class="mt-6 flex flex-col lg:flex-row gap-6">
-
-            <!-- DURAÇÃO -->
+            
+            <!-- GRÁFICO 1: ANÁLISE DE DURAÇÃO -->
             <div class="lg:w-1/2 bg-white p-6 shadow-lg rounded-lg">
                 <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Análise de Duração Média (DATA INICIAL vs DATA FINAL)</h2>
                 <div class="h-80">
@@ -147,303 +160,674 @@
                 <p class="text-center text-gray-500 text-sm mt-4">Duração média de projetos por SITE.</p>
             </div>
 
-            <!-- PROGRESSO -->
+            <!-- GRÁFICO 2: PROGRESSO POR SUPERVISOR E ANÁLISE DE IA -->
             <div class="lg:w-1/2 bg-white p-6 shadow-lg rounded-lg">
                 <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
-                    Progresso Percentual por Supervisor
-                    <button id="analyzeSupervisorBtn" class="ml-2 px-3 py-1 text-xs font-semibold text-white
-                    bg-blue-600 rounded-full hover:bg-blue-700 transition duration-150" onclick="analyzeSupervisorData()">
+                    Progresso Percentual por Supervisor 
+                    <button id="analyzeSupervisorBtn" class="ml-2 px-3 py-1 text-xs font-semibold text-white bg-blue-600 rounded-full hover:bg-blue-700 transition duration-150" onclick="analyzeSupervisorData()">
                         Analisar (IA ✨)
                     </button>
                 </h2>
                 <div class="h-80 mb-4">
                     <canvas id="supervisorChart"></canvas>
                 </div>
+                <!-- Área de resultado da IA -->
                 <div id="aiSupervisorAnalysis" class="mt-2 p-3 border-l-4 border-blue-500 bg-blue-50">
                     <p class="text-sm text-blue-700 font-semibold mb-1">Resumo Executivo da IA:</p>
-                    <p id="supervisorAnalysisText" class="text-xs text-gray-700 italic">
-                        Clique em 'Analisar (IA ✨)' para gerar um resumo do progresso dos supervisores.
-                    </p>
+                    <p id="supervisorAnalysisText" class="text-xs text-gray-700 italic">Clique em 'Analisar (IA ✨)' para gerar um resumo do progresso dos supervisores.</p>
                 </div>
             </div>
         </div>
 
-        <!-- ANÁLISE DE GARGALOS -->
+        <!-- NOVO PAINEL DE ANÁLISE ESTRUTURADA DE GARGALOS -->
         <div class="mt-6 bg-white p-6 shadow-lg rounded-lg">
             <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
                 Identificação Estruturada de Gargalos (IA ✨)
-                <button id="identifyBottlenecksBtn" class="ml-2 px-3 py-1 text-xs font-semibold text-white
-                bg-indigo-600 rounded-full hover:bg-indigo-700 transition duration-150" onclick="identifyBottlenecks()">
+                <button id="identifyBottlenecksBtn" class="ml-2 px-3 py-1 text-xs font-semibold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition duration-150" onclick="identifyBottlenecks()">
                     Analisar Gargalos Ativos (IA ✨)
                 </button>
             </h2>
             <div id="bottlenecksResult" class="mt-4">
-                <p class="text-gray-500">
-                    O Gemini analisará a carga de trabalho de status 'RETIRANDO PENDÊNCIAS' e 'PROGRAMADO'
-                    por Supervisor/Cidade e retornará os 5 principais gargalos.
-                </p>
+                <p class="text-gray-500">A IA analisará a carga de trabalho de status 'RETIRANDO PENDÊNCIAS' e 'PROGRAMADO' por Supervisor/Cidade e retornará os 5 principais gargalos.</p>
             </div>
         </div>
+
+
     </div>
 
-    <!-- JAVASCRIPT -->
     <script>
-        const OPENAI_API_KEY = ""; // Coloque sua chave OpenAI
-        const OPENAI_MODEL = "gpt-4o-mini";
-        const apiUrl = 'https://api.openai.com/v1/chat/completions';
-
+        // Chave da API OpenAI (Substituído de Gemini)
+        const OPENAI_API_KEY = ""; // COLOQUE SUA CHAVE AQUI
+        const OPENAI_MODEL = "gpt-4o-mini"; // Ou gpt-3.5-turbo
+        const apiUrl = 'https://api.openai.com/v1/chat/completions'; // Endpoint do OpenAI
+        
+        // --- CONFIGURAÇÕES E ESTADO GLOBAL ---
         let rawActivities = [];
-        let activitiesData = {};
+        let activitiesData = {}; 
         let currentMonth = new Date().getMonth();
         let currentYear = new Date().getFullYear();
         let chartInstance = null;
         let durationChartInstance = null;
         let supervisorChartInstance = null;
-        let supervisorProgressData = {};
-        const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-        const STATUS_COLORS = {'INSTALADO':'rgb(67,160,71)','PROGRAMADO':'rgb(25,118,210)','RETIRANDO PENDÊNCIAS':'rgb(255,193,7)','INSTALANDO':'rgb(100,181,246)','ABERTO':'rgb(189,189,189)','DEFAULT':'rgb(255,99,132)'};
-        const REQUIRED_HEADERS = ['DATA INICIAL','STATUS DO PROJETO','SUPERVISOR','SITE','CIDADE','DATA FINAL'];
+        let supervisorProgressData = {}; 
 
+        const MONTHS_PT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const STATUS_COLORS = {
+            'INSTALADO': 'rgb(67, 160, 71)',       
+            'PROGRAMADO': 'rgb(25, 118, 210)',      
+            'RETIRANDO PENDÊNCIAS': 'rgb(255, 193, 7)', 
+            'INSTALANDO': 'rgb(100, 181, 246)',      
+            'ABERTO': 'rgb(189, 189, 189)',         
+            'DEFAULT': 'rgb(255, 99, 132)'           
+        };
+        let csvHeaders = []; 
+        const REQUIRED_HEADERS = ['DATA INICIAL', 'STATUS DO PROJETO', 'SUPERVISOR', 'SITE', 'CIDADE', 'DATA FINAL'];
+
+        // --- FUNÇÕES DE UTENSÍLIOS ---
+
+        /**
+         * Tenta analisar string de data (DD/MM/YYYY ou YYYY-MM-DD).
+         */
         function parseDate(dateStr) {
-            if(!dateStr || dateStr==='null' || dateStr.toLowerCase()==='nan') return null;
-            dateStr=dateStr.split(' ')[0];
-            const [day,month,year]=dateStr.split('/');
-            return new Date(`${year}-${month}-${day}`);
-        }
-
-        function updateFileStatus(text){ document.getElementById('fileStatus').innerText=text; }
-
-        document.getElementById('csvFileInput').addEventListener('change', function(event){
-            const file = event.target.files[0];
-            if(!file){ updateFileStatus("Nenhum arquivo selecionado."); return; }
-            const reader = new FileReader();
-            reader.onload = function(e){
-                const csv = e.target.result;
-                processCSV(csv);
-            };
-            reader.readAsText(file);
-        });
-
-        function processCSV(csvText){
-            const lines = csvText.split(/\r?\n/).filter(l=>l.trim()!=='');
-            if(lines.length<2){ updateFileStatus("CSV inválido ou vazio."); return; }
-            const headers = lines[0].split(',').map(h=>h.trim());
-            const missingHeaders = REQUIRED_HEADERS.filter(h=>!headers.includes(h));
-            if(missingHeaders.length>0){ updateFileStatus("Cabeçalhos ausentes: "+missingHeaders.join(', ')); return; }
-
-            rawActivities = lines.slice(1).map(line=>{
-                const cols = line.split(',');
-                let obj={};
-                headers.forEach((h,i)=>{ obj[h]=cols[i]||''; });
-                return obj;
-            });
-
-            updateFileStatus(`${rawActivities.length} atividades carregadas.`);
-            generateCalendar();
-            updateCharts();
-        }
-
-        function generateCalendar(){
-            const firstDay = new Date(currentYear,currentMonth,1);
-            const lastDay = new Date(currentYear,currentMonth+1,0);
-            const calendarGrid = document.getElementById('calendarGrid');
-            calendarGrid.innerHTML='';
-
-            const firstWeekday = firstDay.getDay();
-            for(let i=0;i<firstWeekday;i++){
-                const emptyDiv = document.createElement('div');
-                emptyDiv.className='calendar-day-wrapper empty';
-                calendarGrid.appendChild(emptyDiv);
+            if (!dateStr || dateStr === 'null' || dateStr.toLowerCase() === 'nan') return null;
+            dateStr = dateStr.split(' ')[0]; 
+            
+            const partsDMY = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+            if (partsDMY) {
+                const [_, day, month, year] = partsDMY;
+                const parsedDate = new Date(year, month - 1, day);
+                if (!isNaN(parsedDate) && parsedDate.getMonth() == month - 1) {
+                    return parsedDate;
+                }
             }
 
-            for(let d=1; d<=lastDay.getDate(); d++){
-                const dayWrapper = document.createElement('div');
-                dayWrapper.className='calendar-day-wrapper';
-                const dayNum = document.createElement('div');
-                dayNum.className='calendar-day-num';
-                dayNum.innerText=d;
+            const dateObj = new Date(dateStr);
+            if (!isNaN(dateObj)) {
+                return dateObj;
+            }
+            
+            return null;
+        }
 
-                const dateStr = `${d}/${currentMonth+1}/${currentYear}`;
-                const activitiesForDay = rawActivities.filter(a=>{
-                    const date = parseDate(a['DATA FINAL']);
-                    return date && date.getDate()===d && date.getMonth()===currentMonth && date.getFullYear()===currentYear;
+        function dateToYYYYMMDD(dateObj) {
+            if (!dateObj) return null;
+            return dateObj.toISOString().split('T')[0];
+        }
+
+        // Função para simular o fetch da API com backoff (AGORA PARA OPENAI)
+        async function fetchWithBackoff(messages, useJsonSchema = false, maxRetries = 5, delay = 1000) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+            };
+
+            const payload = {
+                model: OPENAI_MODEL,
+                messages: messages,
+                temperature: 0.7,
+                max_tokens: 1500,
+            };
+
+            // Adiciona a especificação JSON se um schema for fornecido
+            if (useJsonSchema) {
+                payload.response_format = { type: "json_object" };
+            }
+
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 200) {
+                        return await response.json();
+                    } else if (response.status === 429) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                    } else {
+                        // Tenta ler o erro do corpo da resposta
+                        const errorBody = await response.text();
+                        throw new Error(`API returned status ${response.status}. Detalhes: ${errorBody}`);
+                    }
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+
+        // --- FUNÇÕES DE PROCESSAMENTO DE DADOS ---
+
+        /**
+         * Processa o CSV e constrói as estruturas de dados necessárias.
+         */
+        function processCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+            if (lines.length === 0) return;
+
+            const tempRawActivities = [];
+            const dataCounts = {};
+
+            // 1. Determinar cabeçalhos
+            // Usa regex para lidar com cabeçalhos entre aspas, mas aqui assume CSV simples para velocidade
+            csvHeaders = lines[0].split(',').map(h => h.trim());
+            let startIndex = 1;
+
+            if (!REQUIRED_HEADERS.every(h => csvHeaders.includes(h))) {
+                document.getElementById('fileStatus').textContent = `AVISO: O CSV deve conter as colunas: ${REQUIRED_HEADERS.join(', ')}. Certifique-se de que o cabeçalho esteja na primeira linha.`;
+            }
+
+            // 2. Processar linhas de dados
+            for (let i = startIndex; i < lines.length; i++) {
+                const parts = lines[i].split(',');
+                if (parts.length < csvHeaders.length) continue; 
+                
+                let activity = {};
+                csvHeaders.forEach((header, index) => {
+                    activity[header] = parts[index] ? parts[index].trim() : '';
                 });
 
-                if(activitiesForDay.length>0) dayNum.classList.add('active');
+                // *** USANDO DATA FINAL ***
+                const dateStr = activity['DATA FINAL'];
+                const status = activity['STATUS DO PROJETO'] ? activity['STATUS DO PROJETO'].toUpperCase() : 'DEFAULT';
+                const dateObj = parseDate(dateStr);
 
-                dayNum.addEventListener('click',()=>{ displayActivityDetails(dateStr, activitiesForDay); highlightSelectedDay(dayNum); });
-
-                const badge = document.createElement('div');
-                badge.className='activity-count-badge';
-                badge.innerText=activitiesForDay.length;
-                dayWrapper.appendChild(dayNum);
-                dayWrapper.appendChild(badge);
-                calendarGrid.appendChild(dayWrapper);
+                if (dateObj) {
+                    const yyyymmdd = dateToYYYYMMDD(dateObj);
+                    
+                    if (!dataCounts[yyyymmdd]) {
+                        dataCounts[yyyymmdd] = {};
+                    }
+                    dataCounts[yyyymmdd][status] = (dataCounts[yyyymmdd][status] || 0) + 1;
+                    
+                    activity.dateKey = yyyymmdd; 
+                    tempRawActivities.push(activity);
+                }
             }
 
-            document.getElementById('currentMonthYear').innerText=`${MONTHS_PT[currentMonth]} ${currentYear}`;
+            rawActivities = tempRawActivities;
+            activitiesData = dataCounts;
+            
+            // Renderiza tudo
+            renderCalendar();
+            updateStats();
+            renderDurationChart();
+            renderSupervisorProgressChart();
         }
 
-        function highlightSelectedDay(selected){
-            document.querySelectorAll('.calendar-day-num').forEach(d=>d.classList.remove('selected'));
-            selected.classList.add('selected');
-        }
+        // --- OUTRAS FUNÇÕES (CALENDÁRIO, ESTATÍSTICAS, ETC.) ---
 
-        function displayActivityDetails(dateStr, activities){
-            const container = document.getElementById('activityDetailTable');
-            if(activities.length===0){ container.innerHTML='<p class="text-gray-500">Nenhuma atividade para esta data.</p>'; return; }
-            let html=`<table class="min-w-full divide-y divide-gray-200 text-sm"><thead class="bg-gray-50"><tr>
-            <th class="px-4 py-2 text-left font-medium text-gray-500">SITE</th>
-            <th class="px-4 py-2 text-left font-medium text-gray-500">SUPERVISOR</th>
-            <th class="px-4 py-2 text-left font-medium text-gray-500">STATUS</th>
-            <th class="px-4 py-2 text-left font-medium text-gray-500">DATA INICIAL</th>
-            <th class="px-4 py-2 text-left font-medium text-gray-500">DATA FINAL</th>
-            </tr></thead><tbody class="bg-white divide-y divide-gray-200">`;
-            activities.forEach(a=>{
-                html+=`<tr>
-                    <td class="px-4 py-2">${a['SITE']}</td>
-                    <td class="px-4 py-2">${a['SUPERVISOR']}</td>
-                    <td class="px-4 py-2">${a['STATUS DO PROJETO']}</td>
-                    <td class="px-4 py-2">${a['DATA INICIAL']}</td>
-                    <td class="px-4 py-2">${a['DATA FINAL']}</td>
-                </tr>`;
-            });
-            html+='</tbody></table>';
-            container.innerHTML=html;
-        }
-
-        function changeMonth(offset){
-            currentMonth+=offset;
-            if(currentMonth<0){ currentMonth=11; currentYear-=1; }
-            if(currentMonth>11){ currentMonth=0; currentYear+=1; }
-            generateCalendar();
-        }
-
-        function updateCharts(){
-            const statuses = [...new Set(rawActivities.map(a=>a['STATUS DO PROJETO'] || 'DEFAULT'))];
-            const daysInMonth = new Date(currentYear,currentMonth+1,0).getDate();
-            const labels = Array.from({length:daysInMonth},(_,i)=>i+1);
-
-            let datasets=[];
-            statuses.forEach(status=>{
-                let data=[];
-                for(let d=1; d<=daysInMonth; d++){
-                    const count = rawActivities.filter(a=>{
-                        const date=parseDate(a['DATA FINAL']);
-                        return date && date.getDate()===d && date.getMonth()===currentMonth && a['STATUS DO PROJETO']===status;
-                    }).length;
-                    data.push(count);
+        function updateStats() {
+            let total = 0;
+            let daysWithActivities = 0;
+            
+            for (const date in activitiesData) {
+                let dailyTotal = 0;
+                for(const status in activitiesData[date]) {
+                    dailyTotal += activitiesData[date][status];
                 }
-                datasets.push({ label: status, data:data, backgroundColor: STATUS_COLORS[status] || STATUS_COLORS['DEFAULT'] });
+                total += dailyTotal;
+                daysWithActivities++;
+            }
+            
+            const avg = daysWithActivities > 0 ? (total / daysWithActivities).toFixed(1) : 0;
+            
+            document.getElementById('totalActivities').textContent = total;
+            document.getElementById('avgActivities').textContent = avg;
+            
+            updateChartData(currentYear, currentMonth); 
+        }
+
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            } else if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            document.getElementById('currentMonthYear').textContent = `${MONTHS_PT[currentMonth]} ${currentYear}`;
+            const calendarGrid = document.getElementById('calendarGrid');
+            calendarGrid.innerHTML = '';
+            
+            const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+            const startingDay = firstDayOfMonth.getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            for (let i = 0; i < startingDay; i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day-wrapper empty';
+                dayDiv.innerHTML = '<span class="calendar-day-num"></span><span class="activity-count-badge"></span>';
+                calendarGrid.appendChild(dayDiv);
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const statusCounts = activitiesData[dateKey] || {};
+                let activityCount = 0;
+                for(const status in statusCounts) { activityCount += statusCounts[status]; }
+
+                const wrapperDiv = document.createElement('div');
+                wrapperDiv.className = 'calendar-day-wrapper';
+                
+                const dayNumSpan = document.createElement('span');
+                dayNumSpan.textContent = day;
+                dayNumSpan.className = 'calendar-day-num';
+
+                const countBadge = document.createElement('span');
+                countBadge.className = 'activity-count-badge';
+                
+                if (activityCount > 0) {
+                    dayNumSpan.classList.add('active');
+                    dayNumSpan.title = `${activityCount} projeto(s) finalizado(s)`;
+                    countBadge.textContent = `${activityCount} atv.`;
+                    
+                    dayNumSpan.addEventListener('click', () => {
+                        document.querySelectorAll('.calendar-day-num.selected').forEach(el => el.classList.remove('selected'));
+                        dayNumSpan.classList.add('selected');
+                        displayActivityDetails(dateKey);
+                    });
+
+                } else {
+                    countBadge.textContent = '';
+                }
+                
+                wrapperDiv.appendChild(dayNumSpan);
+                wrapperDiv.appendChild(countBadge);
+                calendarGrid.appendChild(wrapperDiv);
+            }
+            
+            updateChartData(currentYear, currentMonth);
+            displayActivityDetails(null); 
+        }
+        
+        function displayActivityDetails(dateKey) {
+            const tableContainer = document.getElementById('activityDetailTable');
+            const titleElement = document.getElementById('detailTitle');
+            
+            if (!dateKey) {
+                titleElement.textContent = "Detalhes da Atividade (Selecione um Dia)";
+                tableContainer.innerHTML = '<p class="text-gray-500">Clique em um dia destacado no calendário para ver a lista de projetos.</p>';
+                return;
+            }
+
+            // Filtra pela DATA FINAL
+            const activitiesForDay = rawActivities.filter(a => a.dateKey === dateKey);
+            
+            if (activitiesForDay.length === 0) {
+                titleElement.textContent = `Detalhes para ${dateKey} (0 Projetos)`;
+                tableContainer.innerHTML = '<p class="text-gray-500">Nenhum projeto finalizado nesta data.</p>';
+                return;
+            }
+
+            titleElement.textContent = `Detalhes da Atividade (Finalizações) para ${dateKey} (${activitiesForDay.length} Projetos)`;
+
+            let tableHTML = `<table class="min-w-full divide-y divide-gray-200 shadow-sm rounded-lg overflow-hidden">`;
+            
+            tableHTML += `<thead class="bg-gray-50"><tr>`;
+            csvHeaders.forEach(header => {
+                tableHTML += `<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${header}</th>`;
+            });
+            tableHTML += `</tr></thead>`;
+
+            tableHTML += `<tbody class="bg-white divide-y divide-gray-200">`;
+            activitiesForDay.forEach(activity => {
+                tableHTML += `<tr>`;
+                csvHeaders.forEach(header => {
+                    const value = activity[header] || '-';
+                    tableHTML += `<td class="px-3 py-4 whitespace-nowrap text-xs text-gray-900">${value}</td>`;
+                });
+                tableHTML += `</tr>`;
+            });
+            tableHTML += `</tbody></table>`;
+
+            tableContainer.innerHTML = tableHTML;
+        }
+
+        // --- FUNÇÕES DOS GRÁFICOS ---
+
+        function updateChartData(year, month) {
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const labels = [];
+            const allStatuses = new Set();
+            const datasets = [];
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                labels.push(day);
+                if (activitiesData[dateKey]) {
+                    Object.keys(activitiesData[dateKey]).forEach(status => allStatuses.add(status));
+                }
+            }
+            
+            allStatuses.forEach(status => {
+                const statusData = [];
+                labels.forEach(day => {
+                    const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    statusData.push(activitiesData[dateKey]?.[status] || 0);
+                });
+
+                datasets.push({
+                    label: status,
+                    data: statusData,
+                    backgroundColor: STATUS_COLORS[status] || STATUS_COLORS.DEFAULT,
+                    stack: 'Stack 1'
+                });
             });
 
-            if(chartInstance) chartInstance.destroy();
+            renderStackedChart(labels, datasets);
+        }
+
+        function renderStackedChart(labels, datasets) {
             const ctx = document.getElementById('activitiesChart').getContext('2d');
-            chartInstance = new Chart(ctx,{
-                type:'bar',
-                data:{ labels: labels, datasets: datasets },
-                options:{ responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true } } }
+            if (chartInstance) { chartInstance.destroy(); }
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, title: { display: true, text: 'Dia do Mês' } },
+                        y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Nº de Projetos' } }
+                    },
+                    plugins: { legend: { position: 'top' }, title: { display: false } }
+                }
             });
-
-            const total = rawActivities.length;
-            const avg = (total/daysInMonth).toFixed(1);
-            document.getElementById('totalActivities').innerText=total;
-            document.getElementById('avgActivities').innerText=avg;
-
-            updateDurationChart();
-            updateSupervisorChart();
         }
-
-        function updateDurationChart(){
-            const siteGroups = {};
-            rawActivities.forEach(a=>{
-                const site = a['SITE'] || 'N/A';
-                const start = parseDate(a['DATA INICIAL']);
-                const end = parseDate(a['DATA FINAL']);
-                if(!start || !end) return;
-                const duration = (end-start)/(1000*3600*24);
-                if(!siteGroups[site]) siteGroups[site]=[];
-                siteGroups[site].push(duration);
+        
+        function renderDurationChart() {
+            const durationAnalysis = {};
+            
+            rawActivities.forEach(activity => {
+                const startDate = parseDate(activity['DATA INICIAL']);
+                const endDate = parseDate(activity['DATA FINAL']);
+                const site = activity['SITE'];
+                
+                if (startDate && endDate && site) {
+                    const durationMs = endDate - startDate;
+                    const durationDays = Math.max(0, durationMs / (1000 * 60 * 60 * 24)); 
+                    
+                    if (!durationAnalysis[site]) {
+                        durationAnalysis[site] = { totalDuration: 0, count: 0 };
+                    }
+                    durationAnalysis[site].totalDuration += durationDays;
+                    durationAnalysis[site].count++;
+                }
             });
 
-            const labels = Object.keys(siteGroups);
-            const data = labels.map(site=>{
-                const arr = siteGroups[site];
-                return arr.reduce((a,b)=>a+b,0)/arr.length;
+            const labels = [];
+            const data = [];
+            
+            Object.keys(durationAnalysis).forEach(site => {
+                const avg = durationAnalysis[site].totalDuration / durationAnalysis[site].count;
+                labels.push(site);
+                data.push(avg.toFixed(1));
             });
-
-            if(durationChartInstance) durationChartInstance.destroy();
+            
             const ctx = document.getElementById('durationChart').getContext('2d');
-            durationChartInstance = new Chart(ctx,{
-                type:'bar',
-                data:{ labels:labels, datasets:[{label:'Duração Média (dias)', data:data, backgroundColor:'rgb(79,70,229)'}] },
-                options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+            if (durationChartInstance) durationChartInstance.destroy();
+
+            durationChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Duração Média (dias)',
+                        data: data,
+                        backgroundColor: '#FF6384',
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Média de Dias' } } },
+                    plugins: { legend: { display: false }, title: { display: true, text: 'Média de Duração (DATA FINAL - DATA INICIAL)' } }
+                }
             });
         }
+        
+        function renderSupervisorProgressChart() {
+            const supervisorProgress = {};
+            const relevantStatuses = ['INSTALADO', 'PROGRAMADO', 'RETIRANDO PENDÊNCIAS'];
+            
+            rawActivities.forEach(activity => {
+                const supervisor = activity['SUPERVISOR'] || 'Não Atribuído';
+                const status = activity['STATUS DO PROJETO'] ? activity['STATUS DO PROJETO'].toUpperCase() : 'DEFAULT';
 
-        function updateSupervisorChart(){
-            const supervisors = [...new Set(rawActivities.map(a=>a['SUPERVISOR']||'N/A'))];
-            const data = supervisors.map(sup=>{
-                const arr = rawActivities.filter(a=>a['SUPERVISOR']===sup);
-                const completed = arr.filter(a=>a['STATUS DO PROJETO']==='INSTALADO').length;
-                return ((completed/arr.length)*100).toFixed(1);
+                if (!supervisorProgress[supervisor]) {
+                    supervisorProgress[supervisor] = { total: 0 };
+                    relevantStatuses.forEach(s => supervisorProgress[supervisor][s] = 0);
+                }
+                
+                supervisorProgress[supervisor].total++;
+                if (relevantStatuses.includes(status)) {
+                    supervisorProgress[supervisor][status] = (supervisorProgress[supervisor][status] || 0) + 1;
+                }
             });
-            if(supervisorChartInstance) supervisorChartInstance.destroy();
+            
+            supervisorProgressData = supervisorProgress; 
+            let analysisText = '';
+            
+            Object.keys(supervisorProgress).forEach(supervisor => {
+                const installedCount = supervisorProgress[supervisor]['INSTALADO'] || 0;
+                const totalCount = supervisorProgress[supervisor].total;
+                const percentageCompleted = (installedCount / totalCount) * 100;
+                
+                analysisText += `**${supervisor}**: ${totalCount} projetos no total. Progresso de Instalação: ${percentageCompleted.toFixed(1)}%. ;`;
+            });
+
+            const totalStatusCounts = {};
+            rawActivities.forEach(activity => {
+                const status = activity['STATUS DO PROJETO'] ? activity['STATUS DO PROJETO'].toUpperCase() : 'DEFAULT';
+                totalStatusCounts[status] = (totalStatusCounts[status] || 0) + 1;
+            });
+            
+            const chartLabels = Object.keys(totalStatusCounts).filter(status => relevantStatuses.includes(status));
+            const chartData = chartLabels.map(status => totalStatusCounts[status]);
+            const chartColors = chartLabels.map(status => STATUS_COLORS[status] || STATUS_COLORS.DEFAULT);
+
             const ctx = document.getElementById('supervisorChart').getContext('2d');
-            supervisorChartInstance = new Chart(ctx,{
-                type:'bar',
-                data:{ labels:supervisors, datasets:[{label:'% Concluído', data:data, backgroundColor:'rgb(16,185,129)'}] },
-                options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, max:100 } } }
+            if (supervisorChartInstance) supervisorChartInstance.destroy();
+
+            supervisorChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        label: 'Distribuição Total de Status',
+                        data: chartData,
+                        backgroundColor: chartColors,
+                        borderColor: '#ffffff',
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' },
+                        title: { display: true, text: 'Distribuição GERAL de Status (Todos os Supervisores)' }
+                    }
+                }
             });
+            
+            document.getElementById('supervisorAnalysisText').innerHTML = analysisText.replace(/;/g, '<br>');
+        }
+        
+        // --- FUNÇÕES DE INTEGRAÇÃO COM OPENAI API (CHAT GPT) ---
+
+        async function analyzeSupervisorData() {
+            if (!OPENAI_API_KEY) {
+                alert("Por favor, insira sua chave de API do OpenAI no código.");
+                return;
+            }
+
+            const outputElement = document.getElementById('aiSupervisorAnalysis');
+            outputElement.innerHTML = `<p class="text-sm text-blue-700 font-semibold mb-1">Resumo Executivo da IA:</p><p class="text-xs text-gray-700 italic">Aguarde, analisando dados de progresso...</p>`;
+            
+            const supervisorDataJson = JSON.stringify(supervisorProgressData, null, 2);
+            const prompt = `Analise os seguintes dados de progresso de projeto, agrupados por supervisor e status, e gere um resumo executivo conciso em português. Identifique o supervisor com o melhor desempenho (maior % INSTALADO) e o supervisor com a maior necessidade de atenção (maior % RETIRANDO PENDÊNCIAS/PROGRAMADO). Dados: ${supervisorDataJson}`;
+            
+            const messages = [
+                { role: "system", content: "Você é um analista de projetos experiente. Sua resposta deve ser em português, profissional e ter no máximo 4 frases, focando em identificar o melhor e o pior desempenho." },
+                { role: "user", content: prompt }
+            ];
+
+            try {
+                const result = await fetchWithBackoff(messages);
+                const text = result?.choices?.[0]?.message?.content || "Falha ao gerar o resumo. Tente novamente.";
+                
+                outputElement.innerHTML = `<p class="text-sm text-blue-700 font-semibold mb-1">Resumo Executivo da IA:</p><p class="text-xs text-gray-700">${text}</p>`;
+
+            } catch (error) {
+                outputElement.innerHTML = `<p class="text-sm text-red-700 font-semibold mb-1">Resumo Executivo da IA:</p><p class="text-xs text-red-700">Erro na comunicação com a API: ${error.message}</p>`;
+            }
         }
 
-        async function analyzeSupervisorData(){
-            if(!OPENAI_API_KEY){ alert("Adicione a chave da OpenAI!"); return; }
-            const summary = supervisorsSummary();
-            document.getElementById('supervisorAnalysisText').innerText='Processando análise...';
-            const prompt = `Analise os seguintes dados de supervisores e forneça insights: ${summary}`;
-            const response = await fetch(apiUrl,{
-                method:'POST',
-                headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+OPENAI_API_KEY },
-                body: JSON.stringify({ model:OPENAI_MODEL, messages:[{role:'user',content:prompt}], max_tokens:300 })
+        async function identifyBottlenecks() {
+            if (!OPENAI_API_KEY) {
+                alert("Por favor, insira sua chave de API do OpenAI no código.");
+                return;
+            }
+            
+            const outputElement = document.getElementById('bottlenecksResult');
+            outputElement.innerHTML = `<p class="text-gray-700 italic">Aguarde, a IA está analisando gargalos...</p>`;
+
+            const bottleneckActivities = rawActivities.filter(a => {
+                const status = a['STATUS DO PROJETO'] ? a['STATUS DO PROJETO'].toUpperCase() : '';
+                return status === 'RETIRANDO PENDÊNCIAS' || status === 'PROGRAMADO';
             });
-            const data = await response.json();
-            const msg = data?.choices?.[0]?.message?.content || 'Sem resposta da IA.';
-            document.getElementById('supervisorAnalysisText').innerText=msg;
+
+            // Se não houver dados pendentes, saia
+            if (bottleneckActivities.length === 0) {
+                outputElement.innerHTML = `<p class="text-gray-500">Nenhum projeto em status de gargalo ('RETIRANDO PENDÊNCIAS' ou 'PROGRAMADO') para analisar.</p>`;
+                return;
+            }
+
+            const bottleneckData = bottleneckActivities.map(a => 
+                `Supervisor: ${a['SUPERVISOR']}, Cidade: ${a['CIDADE']}, Status: ${a['STATUS DO PROJETO']}, Site: ${a['SITE']}`
+            ).join('\n');
+            
+            const prompt = `Analise a lista de projetos pendentes e em programação ('RETIRANDO PENDÊNCIAS' e 'PROGRAMADO'). Identifique os 3 principais fatores de gargalo com base na concentração de trabalho (Supervisor, Cidade ou Status) e retorne o resultado em formato JSON. O JSON deve ser um array de objetos, onde cada objeto tem as chaves: 'fator', 'total_pendente', e 'prioridade' ('Alta', 'Média', ou 'Baixa').`;
+            
+            const messages = [
+                { role: "system", content: "Você é um analista de projetos. Retorne APENAS o array JSON estrito, sem preâmbulos ou texto explicativo. O array deve conter 3 objetos representando os 3 principais gargalos." },
+                { role: "user", content: `${prompt}\n\nDados:\n${bottleneckData}` }
+            ];
+            
+            try {
+                const result = await fetchWithBackoff(messages, true);
+                
+                const jsonText = result?.choices?.[0]?.message?.content;
+                
+                // Tenta limpar e analisar o JSON
+                const cleanJsonMatch = jsonText ? jsonText.match(/\[.*\]/s) : null; 
+                if (cleanJsonMatch === null) { 
+                    throw new Error("API retornou um texto inválido ou não retornou um array JSON estrito.");
+                }
+                const cleanJsonText = cleanJsonMatch[0];
+                const parsedJson = JSON.parse(cleanJsonText);
+                
+                // Mapeamento e renderização (corrigido o erro de toLowerCase)
+                let tableHTML = `<table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-indigo-50"><tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-indigo-700 uppercase">Fator de Gargalo</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-indigo-700 uppercase">Total Pendente</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-indigo-700 uppercase">Prioridade</th>
+                    </tr></thead><tbody>`;
+                parsedJson.forEach(item => {
+                    // VERIFICAÇÃO DE SEGURANÇA CORRIGIDA: Garante que prioridade seja uma string antes de toLowerCase
+                    const priority = (item.prioridade || '').toString().toLowerCase(); 
+                    let color = 'bg-gray-100'; // Default
+                    if (priority === 'alta') {
+                        color = 'bg-red-100';
+                    } else if (priority === 'média') {
+                        color = 'bg-yellow-100';
+                    } else if (priority === 'baixa') {
+                        color = 'bg-green-100';
+                    }
+
+                    tableHTML += `<tr class="${color}">
+                        <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${item.fator || '-'}</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">${item.total_pendente || 0}</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">${item.prioridade || 'N/A'}</td>
+                    </tr>`;                });
+                tableHTML += `</tbody></table>`;
+                
+                outputElement.innerHTML = tableHTML;
+
+            } catch (error) {
+                outputElement.innerHTML = `<p class="text-sm text-red-700">Erro na comunicação com a API ou formato JSON inválido: ${error.message}</p><p class="text-xs text-gray-500">Verifique o console para mais detalhes (F12).</p>`;
+                console.error("Erro na análise estruturada da IA:", error);
+            }
         }
 
-        function supervisorsSummary(){
-            const supervisors = [...new Set(rawActivities.map(a=>a['SUPERVISOR']||'N/A'))];
-            let summary='';
-            supervisors.forEach(sup=>{
-                const arr = rawActivities.filter(a=>a['SUPERVISOR']===sup);
-                const installed = arr.filter(a=>a['STATUS DO PROJETO']==='INSTALADO').length;
-                const total = arr.length;
-                summary+=`Supervisor: ${sup}, Concluído: ${installed}/${total} (${((installed/total)*100).toFixed(1)}%), `;
+
+        // --- FUNÇÃO DE INICIALIZAÇÃO E UPLOAD ---
+        
+        function initApp() {
+            renderCalendar();
+            
+            const fileInput = document.getElementById('csvFileInput');
+            const fileStatus = document.getElementById('fileStatus');
+            
+            // Corrige o escopo do onclick do HTML
+            window.changeMonth = changeMonth;
+            window.analyzeSupervisorData = analyzeSupervisorData;
+            window.identifyBottlenecks = identifyBottlenecks;
+
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    fileStatus.textContent = `Arquivo carregado: ${file.name}. Processando...`;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            processCSV(e.target.result);
+                            fileStatus.textContent = `Arquivo '${file.name}' processado com sucesso!`;
+                        } catch (error) {
+                            fileStatus.textContent = `Erro ao processar o CSV: ${error.message}`;
+                            console.error(error);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
             });
-            return summary;
+
+            // Simula o carregamento inicial de um CSV de exemplo para demonstração
+            const exampleCSV = `SITE,Informações,CIDADE,UF,COORDENADOR,SUPERVISOR,Equipe,RETIRADA DO MATERIAL,DATA INICIAL,DATA FINAL,STATUS DO PROJETO,Outros
+PTA0045,Levar RB, Petrolina,PE,FERNANDO,Joao,Jose Welton,22/10/2025,22/10/2025,24/10/2025,INSTALADO,MOCK
+PTA0042,Levar RB da Sede, Petrolina,PE,FERNANDO,Joao,Jose Welton,23/10/2025,24/10/2025,25/10/2025,PROGRAMADO,MOCK
+PTA0003,Instalação de Kit radio, Petrolina,PE,FERNANDO,Joao,Jose Welton,24/10/2025,25/10/2025,28/10/2025,INSTALADO,MOCK
+JUO0015.1,Equipe deve ir p/ site, Juazeiro,BA,FERNANDO,Joao,Jose Welton,29/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+PTA0044,Instalação de Kit radio, Petrolina,PE,SUPERVISOR ES,Leonardo,Cleverton,20/10/2025,21/10/2025,23/10/2025,PROGRAMADO,MOCK
+VIS0006,Fazer enlace radio, Vertentes,PE,SUPERVISOR ES,Leonardo,Cleverton,25/10/2025,27/10/2025,28/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+VTS0004,Comunicar c/ Eletrica, Capela Nova, Vertentes,PE,SUPERVISOR ES,Leonardo,Cleverton,28/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+GVT0012.1,Instalar o Enlace, Gravata,PE,SUPERVISOR ES,Leonardo,Cleverton,29/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+PTA0046,Instalar Kit radio, Petrolina,PE,SUPERVISOR ES,Leonardo,Frankleomar,20/10/2025,21/10/2025,23/10/2025,PROGRAMADO,MOCK
+JRO0005,Instalação kit rádio, Jeremoabo,BA,SUPERVISOR ES,Leonardo,Frankleomar,23/10/2025,24/10/2025,27/10/2025,PROGRAMADO,MOCK
+PSS0005,Levar SW p/ ser instalado, Cutias, Passira-PE,SUPERVISOR ES,Leonardo,Frankleomar,29/10/2025,29/10/2025,29/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+PTA0049,Instalação de Kit radio, Petrolina,PE,SUPERVISOR ES,Natanael,Jose Welton,20/10/2025,21/10/2025,22/10/2025,INSTALADO,MOCK;            
+            // Define o mês e ano do CSV de exemplo
+            currentMonth = 9; // Outubro (0-indexado)
+            currentYear = 2025;
+            
+            processCSV(exampleCSV);
         }
 
-        async function identifyBottlenecks(){
-            if(!OPENAI_API_KEY){ alert("Adicione a chave da OpenAI!"); return; }
-            document.getElementById('bottlenecksResult').innerHTML='<p class="text-gray-500">Processando análise de gargalos...</p>';
-            const bottleneckStatuses = ['RETIRANDO PENDÊNCIAS','PROGRAMADO'];
-            const filtered = rawActivities.filter(a=>bottleneckStatuses.includes(a['STATUS DO PROJETO']));
-            const summary = filtered.map(a=>`Supervisor: ${a['SUPERVISOR']}, Cidade: ${a['CIDADE']}, SITE: ${a['SITE']}, Status: ${a['STATUS DO PROJETO']}`).join('\n');
-
-            const prompt = `Identifique os 5 principais gargalos desta lista de atividades: ${summary}`;
-            const response = await fetch(apiUrl,{
-                method:'POST',
-                headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+OPENAI_API_KEY },
-                body: JSON.stringify({ model:OPENAI_MODEL, messages:[{role:'user',content:prompt}], max_tokens:300 })
-            });
-            const data = await response.json();
-            const msg = data?.choices?.[0]?.message?.content || 'Sem resposta da IA.';
-            document.getElementById('bottlenecksResult').innerHTML=`<pre class="text-sm text-gray-700">${msg}</pre>`;
-        }
-
-        // Inicialização
-        generateCalendar();
+        // FECHAMENTO DA FUNÇÃO initApp()
+        } // <--- ESTA CHAVE ESTAVA FALTANDO!
+        
+        // Inicialização da aplicação após o carregamento completo do DOM
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
