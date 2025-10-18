@@ -771,18 +771,46 @@
         }
         // --- FUNÇÃO DE INICIALIZAÇÃO E UPLOAD ---
         function initApp() {
+            // Renderiza o calendário logo no início
             renderCalendar();
 
             const fileInput = document.getElementById('csvFileInput');
             const fileStatus = document.getElementById('fileStatus');
 
-            // Corrige escopo global de funções usadas no HTML
+            // Garante que funções globais estejam acessíveis
             window.changeMonth = changeMonth;
             window.analyzeSupervisorData = analyzeSupervisorData;
             window.identifyBottlenecks = identifyBottlenecks;
-            window.processCSV = processCSV; // 🔥 garante que processCSV seja visível globalmente
 
-            // --- EVENTO DE UPLOAD DO CSV ---
+            // --- CSV de Exemplo (com crases para evitar erro de sintaxe) ---
+            const exampleCSV = `
+        SITE,Informações,CIDADE,UF,COORDENADOR,SUPERVISOR,EQUIPE,RETIRADA DO MATERIAL,DATA INICIAL,DATA FINAL,STATUS DO PROJETO,Outros
+        PTA0045,Levar RB,Petrolina,PE,FERNANDO,Joao,Jose Welton,22/10/2025,22/10/2025,24/10/2025,INSTALADO,MOCK
+        PTA0042,Levar RB da Sede,Petrolina,PE,FERNANDO,Joao,Jose Welton,23/10/2025,24/10/2025,25/10/2025,PROGRAMADO,MOCK
+        PTA0003,Instalação de Kit radio,Petrolina,PE,FERNANDO,Joao,Jose Welton,24/10/2025,25/10/2025,28/10/2025,INSTALADO,MOCK
+        JUO0015.1,Equipe deve ir p/ site,Juazeiro,BA,FERNANDO,Joao,Jose Welton,29/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+        PTA0044,Instalação de Kit radio,Petrolina,PE,SUPERVISOR ES,Leonardo,Cleverton,20/10/2025,21/10/2025,23/10/2025,PROGRAMADO,MOCK
+        VIS0006,Fazer enlace radio,Vertentes,PE,SUPERVISOR ES,Leonardo,Cleverton,25/10/2025,27/10/2025,28/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+        VTS0004,Comunicar c/ Elétrica,Capela Nova,Vertentes,PE,SUPERVISOR ES,Leonardo,Cleverton,28/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+        GVT0012.1,Instalar o Enlace,Gravata,PE,SUPERVISOR ES,Leonardo,Cleverton,29/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+        PTA0046,Instalar Kit radio,Petrolina,PE,SUPERVISOR ES,Leonardo,Frankleomar,20/10/2025,21/10/2025,23/10/2025,PROGRAMADO,MOCK
+        JRO0005,Instalação kit rádio,Jeremoabo,BA,SUPERVISOR ES,Leonardo,Frankleomar,23/10/2025,24/10/2025,27/10/2025,PROGRAMADO,MOCK
+        PSS0005,Levar SW p/ ser instalado,Cutias,Passira-PE,SUPERVISOR ES,Leonardo,Frankleomar,29/10/2025,29/10/2025,29/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+        PTA0049,Instalação de Kit radio,Petrolina,PE,SUPERVISOR ES,Natanael,Jose Welton,20/10/2025,21/10/2025,22/10/2025,INSTALADO,MOCK
+        `;
+
+            // Define o mês e ano do exemplo
+            currentMonth = 9; // Outubro (0-indexado)
+            currentYear = 2025;
+
+            try {
+                processCSV(exampleCSV);
+                console.log("CSV de exemplo carregado com sucesso!");
+            } catch (error) {
+                console.error("Erro ao processar CSV de exemplo:", error);
+            }
+
+            // Evento de upload de CSV real
             fileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file) {
@@ -790,8 +818,7 @@
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         try {
-                            const csvText = e.target.result;
-                            processCSV(csvText); // ✅ processa CSV real
+                            processCSV(e.target.result);
                             fileStatus.textContent = `Arquivo '${file.name}' processado com sucesso!`;
                         } catch (error) {
                             fileStatus.textContent = `Erro ao processar o CSV: ${error.message}`;
@@ -801,34 +828,10 @@
                     reader.readAsText(file);
                 }
             });
-
-            // --- CSV DE EXEMPLO (caso nenhum arquivo seja carregado) ---
-            const exampleCSV = `SITE,Informações,CIDADE,UF,COORDENADOR,SUPERVISOR,Equipe,RETIRADA DO MATERIAL,DATA INICIAL,DATA FINAL,STATUS DO PROJETO,Outros
-        PTA0045,Levar RB, Petrolina,PE,FERNANDO,Joao,Jose Welton,22/10/2025,22/10/2025,24/10/2025,INSTALADO,MOCK
-        PTA0042,Levar RB da Sede, Petrolina,PE,FERNANDO,Joao,Jose Welton,23/10/2025,24/10/2025,25/10/2025,PROGRAMADO,MOCK
-        PTA0003,Instalação de Kit radio, Petrolina,PE,FERNANDO,Joao,Jose Welton,24/10/2025,25/10/2025,28/10/2025,INSTALADO,MOCK
-        JUO0015.1,Equipe deve ir p/ site, Juazeiro,BA,FERNANDO,Joao,Jose Welton,29/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
-        PTA0044,Instalação de Kit radio, Petrolina,PE,SUPERVISOR ES,Leonardo,Cleverton,20/10/2025,21/10/2025,23/10/2025,PROGRAMADO,MOCK
-        VIS0006,Fazer enlace radio, Vertentes,PE,SUPERVISOR ES,Leonardo,Cleverton,25/10/2025,27/10/2025,28/10/2025,RETIRANDO PENDÊNCIAS,MOCK
-        VTS0004,Comunicar c/ Eletrica, Vertentes,PE,SUPERVISOR ES,Leonardo,Cleverton,28/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
-        GVT0012.1,Instalar o Enlace, Gravata,PE,SUPERVISOR ES,Leonardo,Cleverton,29/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
-        PTA0046,Instalar Kit radio, Petrolina,PE,SUPERVISOR ES,Leonardo,Frankleomar,20/10/2025,21/10/2025,23/10/2025,PROGRAMADO,MOCK
-        JRO0005,Instalação kit rádio, Jeremoabo,BA,SUPERVISOR ES,Leonardo,Frankleomar,23/10/2025,24/10/2025,27/10/2025,PROGRAMADO,MOCK
-        PSS0005,Levar SW p/ ser instalado, Passira,PE,SUPERVISOR ES,Leonardo,Frankleomar,29/10/2025,29/10/2025,29/10/2025,RETIRANDO PENDÊNCIAS,MOCK
-        PTA0049,Instalação de Kit radio, Petrolina,PE,SUPERVISOR ES,Natanael,Jose Welton,20/10/2025,21/10/2025,22/10/2025,INSTALADO,MOCK`;
-
-            // Define mês e ano padrão
-            currentMonth = 9; // Outubro (0-indexado)
-            currentYear = 2025;
-
-            // --- CARREGAMENTO AUTOMÁTICO DO EXEMPLO ---
-            setTimeout(() => {
-                try {
-                    fileStatus.textContent = "Nenhum arquivo carregado. Exibindo exemplo...";
-                    processCSV(exampleCSV); // ✅ carrega CSV exemplo
-                    fileStatus.textContent = "Exemplo carregado com sucesso!";
-                } catch (error) {
-                    console.error("Erro ao carregar CSV de exemplo:", error);
-                }
-            }, 1000);
         }
+
+        // Inicializa o app após o carregamento da página
+        window.addEventListener("DOMContentLoaded", initApp);
+        </script>
+        </body>
+        </html>
