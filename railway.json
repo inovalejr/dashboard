@@ -1,0 +1,10 @@
+{
+  "deploy": {
+    "startCommand": "exit 0",
+    "buildCommands": "exit 0",
+    "serviceType": "static",
+    "environment": {
+      "PORT": "8080"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+import express from "express";
+import fetch from "node-fetch";
+
+const app = express();
+
+// URL do seu Gradio no Railway
+const TARGET = "https://testecomia2-production.up.railway.app";
+
+app.use(async (req, res) => {
+  try {
+    const url = TARGET + req.url;
+    const response = await fetch(url, {
+      method: req.method,
+      headers: req.headers,
+      body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined
+    });
+
+    // lê o corpo da resposta
+    const body = await response.buffer();
+
+    // copia headers da resposta original, exceto os que bloqueiam iframe
+    response.headers.forEach((value, key) => {
+      if (!["x-frame-options", "content-security-policy"].includes(key.toLowerCase())) {
+        res.setHeader(key, value);
+      }
+    });
+
+    // adiciona headers novos permitindo embed no Looker
+    res.setHeader(
+      "Content-Security-Policy",
+      "frame-ancestors 'self' https://lookerstudio.google.com https://datastudio.google.com"
+    );
+    res.setHeader("X-Frame-Options", "ALLOWALL");
+
+    res.status(response.status).send(body);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Erro no proxy");
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Proxy rodando na porta ${PORT}`));
