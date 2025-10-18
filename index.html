@@ -1,43 +1,449 @@
-import express from "express";
-import fetch from "node-fetch";
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Avançado de Projetos</title>
 
-const app = express();
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 
-// URL do seu Gradio no Railway
-const TARGET = "https://testecomia2-production.up.railway.app";
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
+        }
+        .calendar-day-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 0;
+            position: relative;
+        }
+        .calendar-day-num {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            font-weight: normal;
+        }
+        .calendar-day-num.active {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .calendar-day-num.selected {
+            background-color: #2e7d32;
+        }
+        .calendar-day-num:hover:not(.empty) {
+            background-color: #d1fae5;
+            cursor: pointer;
+        }
+        .calendar-day-num.empty {
+            color: #a0aec0;
+        }
+        .activity-count-badge {
+            font-size: 0.65rem;
+            color: #10B981;
+            font-weight: bold;
+            line-height: 1;
+            margin-top: 2px;
+        }
+        .calendar-day-wrapper.empty .activity-count-badge {
+            display: none;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
 
-app.use(async (req, res) => {
-  try {
-    const url = TARGET + req.url;
-    const response = await fetch(url, {
-      method: req.method,
-      headers: req.headers,
-      body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined
-    });
+        <!-- HEADER -->
+        <header class="mb-6 pb-4 border-b border-gray-200">
+            <h1 class="text-3xl font-bold text-gray-800">Análise de Projetos e Atividades</h1>
+            <p class="text-gray-500">Dashboard integrado com busca por data e análise de progresso.</p>
+        </header>
 
-    // lê o corpo da resposta
-    const body = await response.buffer();
+        <!-- INPUT CSV -->
+        <div class="mb-6 p-4 bg-white shadow-lg rounded-lg">
+            <label for="csvFileInput" class="block text-sm font-medium text-gray-700 mb-2">
+                Carregar Arquivo CSV de Atividades (colunas: SITE, SUPERVISOR, STATUS DO PROJETO, DATA INICIAL, DATA FINAL)
+            </label>
+            <input type="file" id="csvFileInput" accept=".csv" class="w-full text-sm text-gray-500
+            file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold
+            file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+            <p id="fileStatus" class="mt-2 text-sm text-gray-500"></p>
+        </div>
 
-    // copia headers da resposta original, exceto os que bloqueiam iframe
-    response.headers.forEach((value, key) => {
-      if (!["x-frame-options", "content-security-policy"].includes(key.toLowerCase())) {
-        res.setHeader(key, value);
-      }
-    });
+        <!-- DASHBOARD CONTAINER -->
+        <div class="flex flex-col lg:flex-row gap-6">
 
-    // adiciona headers novos permitindo embed no Looker
-    res.setHeader(
-      "Content-Security-Policy",
-      "frame-ancestors 'self' https://lookerstudio.google.com https://datastudio.google.com"
-    );
-    res.setHeader("X-Frame-Options", "ALLOWALL");
+            <!-- GRÁFICO EMPILHADO -->
+            <div class="lg:w-2/3 bg-white p-6 shadow-lg rounded-lg order-2 lg:order-1">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
+                    Contagem de Projetos por Status Diário (Baseado na Data de Término)
+                </h2>
+                <div class="h-96">
+                    <canvas id="activitiesChart"></canvas>
+                </div>
+                <p class="text-center text-gray-500 text-sm mt-4">
+                    Gráfico empilhado mostrando a distribuição dos status de projetos por dia.
+                </p>
+            </div>
 
-    res.status(response.status).send(body);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Erro no proxy");
-  }
-});
+            <!-- CALENDÁRIO E ESTATÍSTICAS -->
+            <div class="lg:w-1/3 bg-white p-6 shadow-lg rounded-lg order-1 lg:order-2">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Seletor de Data</h2>
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Proxy rodando na porta ${PORT}`));
+                <!-- ESTATÍSTICAS -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <div class="text-sm font-medium text-gray-500">Total de Projetos no Período</div>
+                    <div id="totalActivities" class="text-3xl font-bold text-emerald-600">0</div>
+                    <div class="text-sm font-medium text-gray-500 mt-2">Média de Projetos por Dia Finalizado</div>
+                    <div id="avgActivities" class="text-xl font-bold text-gray-700">0</div>
+                </div>
+
+                <!-- CALENDÁRIO -->
+                <div id="calendarContainer" class="calendar text-center">
+                    <div class="flex justify-between items-center mb-3">
+                        <button onclick="changeMonth(-1)" class="p-2 rounded-full hover:bg-gray-200 text-gray-700">&lt;</button>
+                        <h3 id="currentMonthYear" class="text-lg font-semibold text-gray-800"></h3>
+                        <button onclick="changeMonth(1)" class="p-2 rounded-full hover:bg-gray-200 text-gray-700">&gt;</button>
+                    </div>
+                    <div class="grid grid-cols-7 text-xs font-medium text-gray-500 mb-2">
+                        <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span>
+                        <span>Qui</span><span>Sex</span><span>Sáb</span>
+                    </div>
+                    <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-sm"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAINEL DETALHES ATIVIDADE -->
+        <div class="mt-6 bg-white p-6 shadow-lg rounded-lg">
+            <h2 id="detailTitle" class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
+                Detalhes da Atividade (Selecione um Dia)
+            </h2>
+            <div id="activityDetailTable" class="overflow-x-auto">
+                <p class="text-gray-500">Clique em um dia destacado no calendário para ver a lista de projetos.</p>
+            </div>
+        </div>
+
+        <!-- GRÁFICOS DE DURAÇÃO E PROGRESSO -->
+        <div class="mt-6 flex flex-col lg:flex-row gap-6">
+
+            <!-- DURAÇÃO -->
+            <div class="lg:w-1/2 bg-white p-6 shadow-lg rounded-lg">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Análise de Duração Média (DATA INICIAL vs DATA FINAL)</h2>
+                <div class="h-80">
+                    <canvas id="durationChart"></canvas>
+                </div>
+                <p class="text-center text-gray-500 text-sm mt-4">Duração média de projetos por SITE.</p>
+            </div>
+
+            <!-- PROGRESSO -->
+            <div class="lg:w-1/2 bg-white p-6 shadow-lg rounded-lg">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
+                    Progresso Percentual por Supervisor
+                    <button id="analyzeSupervisorBtn" class="ml-2 px-3 py-1 text-xs font-semibold text-white
+                    bg-blue-600 rounded-full hover:bg-blue-700 transition duration-150" onclick="analyzeSupervisorData()">
+                        Analisar (IA ✨)
+                    </button>
+                </h2>
+                <div class="h-80 mb-4">
+                    <canvas id="supervisorChart"></canvas>
+                </div>
+                <div id="aiSupervisorAnalysis" class="mt-2 p-3 border-l-4 border-blue-500 bg-blue-50">
+                    <p class="text-sm text-blue-700 font-semibold mb-1">Resumo Executivo da IA:</p>
+                    <p id="supervisorAnalysisText" class="text-xs text-gray-700 italic">
+                        Clique em 'Analisar (IA ✨)' para gerar um resumo do progresso dos supervisores.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ANÁLISE DE GARGALOS -->
+        <div class="mt-6 bg-white p-6 shadow-lg rounded-lg">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
+                Identificação Estruturada de Gargalos (IA ✨)
+                <button id="identifyBottlenecksBtn" class="ml-2 px-3 py-1 text-xs font-semibold text-white
+                bg-indigo-600 rounded-full hover:bg-indigo-700 transition duration-150" onclick="identifyBottlenecks()">
+                    Analisar Gargalos Ativos (IA ✨)
+                </button>
+            </h2>
+            <div id="bottlenecksResult" class="mt-4">
+                <p class="text-gray-500">
+                    O Gemini analisará a carga de trabalho de status 'RETIRANDO PENDÊNCIAS' e 'PROGRAMADO'
+                    por Supervisor/Cidade e retornará os 5 principais gargalos.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        const OPENAI_API_KEY = ""; // Coloque sua chave OpenAI
+        const OPENAI_MODEL = "gpt-4o-mini";
+        const apiUrl = 'https://api.openai.com/v1/chat/completions';
+
+        let rawActivities = [];
+        let activitiesData = {};
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        let chartInstance = null;
+        let durationChartInstance = null;
+        let supervisorChartInstance = null;
+        let supervisorProgressData = {};
+        const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+        const STATUS_COLORS = {'INSTALADO':'rgb(67,160,71)','PROGRAMADO':'rgb(25,118,210)','RETIRANDO PENDÊNCIAS':'rgb(255,193,7)','INSTALANDO':'rgb(100,181,246)','ABERTO':'rgb(189,189,189)','DEFAULT':'rgb(255,99,132)'};
+        const REQUIRED_HEADERS = ['DATA INICIAL','STATUS DO PROJETO','SUPERVISOR','SITE','CIDADE','DATA FINAL'];
+
+        function parseDate(dateStr) {
+            if(!dateStr || dateStr==='null' || dateStr.toLowerCase()==='nan') return null;
+            dateStr=dateStr.split(' ')[0];
+            const [day,month,year]=dateStr.split('/');
+            return new Date(`${year}-${month}-${day}`);
+        }
+
+        function updateFileStatus(text){ document.getElementById('fileStatus').innerText=text; }
+
+        document.getElementById('csvFileInput').addEventListener('change', function(event){
+            const file = event.target.files[0];
+            if(!file){ updateFileStatus("Nenhum arquivo selecionado."); return; }
+            const reader = new FileReader();
+            reader.onload = function(e){
+                const csv = e.target.result;
+                processCSV(csv);
+            };
+            reader.readAsText(file);
+        });
+
+        function processCSV(csvText){
+            const lines = csvText.split(/\r?\n/).filter(l=>l.trim()!=='');
+            if(lines.length<2){ updateFileStatus("CSV inválido ou vazio."); return; }
+            const headers = lines[0].split(',').map(h=>h.trim());
+            const missingHeaders = REQUIRED_HEADERS.filter(h=>!headers.includes(h));
+            if(missingHeaders.length>0){ updateFileStatus("Cabeçalhos ausentes: "+missingHeaders.join(', ')); return; }
+
+            rawActivities = lines.slice(1).map(line=>{
+                const cols = line.split(',');
+                let obj={};
+                headers.forEach((h,i)=>{ obj[h]=cols[i]||''; });
+                return obj;
+            });
+
+            updateFileStatus(`${rawActivities.length} atividades carregadas.`);
+            generateCalendar();
+            updateCharts();
+        }
+
+        function generateCalendar(){
+            const firstDay = new Date(currentYear,currentMonth,1);
+            const lastDay = new Date(currentYear,currentMonth+1,0);
+            const calendarGrid = document.getElementById('calendarGrid');
+            calendarGrid.innerHTML='';
+
+            const firstWeekday = firstDay.getDay();
+            for(let i=0;i<firstWeekday;i++){
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className='calendar-day-wrapper empty';
+                calendarGrid.appendChild(emptyDiv);
+            }
+
+            for(let d=1; d<=lastDay.getDate(); d++){
+                const dayWrapper = document.createElement('div');
+                dayWrapper.className='calendar-day-wrapper';
+                const dayNum = document.createElement('div');
+                dayNum.className='calendar-day-num';
+                dayNum.innerText=d;
+
+                const dateStr = `${d}/${currentMonth+1}/${currentYear}`;
+                const activitiesForDay = rawActivities.filter(a=>{
+                    const date = parseDate(a['DATA FINAL']);
+                    return date && date.getDate()===d && date.getMonth()===currentMonth && date.getFullYear()===currentYear;
+                });
+
+                if(activitiesForDay.length>0) dayNum.classList.add('active');
+
+                dayNum.addEventListener('click',()=>{ displayActivityDetails(dateStr, activitiesForDay); highlightSelectedDay(dayNum); });
+
+                const badge = document.createElement('div');
+                badge.className='activity-count-badge';
+                badge.innerText=activitiesForDay.length;
+                dayWrapper.appendChild(dayNum);
+                dayWrapper.appendChild(badge);
+                calendarGrid.appendChild(dayWrapper);
+            }
+
+            document.getElementById('currentMonthYear').innerText=`${MONTHS_PT[currentMonth]} ${currentYear}`;
+        }
+
+        function highlightSelectedDay(selected){
+            document.querySelectorAll('.calendar-day-num').forEach(d=>d.classList.remove('selected'));
+            selected.classList.add('selected');
+        }
+
+        function displayActivityDetails(dateStr, activities){
+            const container = document.getElementById('activityDetailTable');
+            if(activities.length===0){ container.innerHTML='<p class="text-gray-500">Nenhuma atividade para esta data.</p>'; return; }
+            let html=`<table class="min-w-full divide-y divide-gray-200 text-sm"><thead class="bg-gray-50"><tr>
+            <th class="px-4 py-2 text-left font-medium text-gray-500">SITE</th>
+            <th class="px-4 py-2 text-left font-medium text-gray-500">SUPERVISOR</th>
+            <th class="px-4 py-2 text-left font-medium text-gray-500">STATUS</th>
+            <th class="px-4 py-2 text-left font-medium text-gray-500">DATA INICIAL</th>
+            <th class="px-4 py-2 text-left font-medium text-gray-500">DATA FINAL</th>
+            </tr></thead><tbody class="bg-white divide-y divide-gray-200">`;
+            activities.forEach(a=>{
+                html+=`<tr>
+                    <td class="px-4 py-2">${a['SITE']}</td>
+                    <td class="px-4 py-2">${a['SUPERVISOR']}</td>
+                    <td class="px-4 py-2">${a['STATUS DO PROJETO']}</td>
+                    <td class="px-4 py-2">${a['DATA INICIAL']}</td>
+                    <td class="px-4 py-2">${a['DATA FINAL']}</td>
+                </tr>`;
+            });
+            html+='</tbody></table>';
+            container.innerHTML=html;
+        }
+
+        function changeMonth(offset){
+            currentMonth+=offset;
+            if(currentMonth<0){ currentMonth=11; currentYear-=1; }
+            if(currentMonth>11){ currentMonth=0; currentYear+=1; }
+            generateCalendar();
+        }
+
+        function updateCharts(){
+            const statuses = [...new Set(rawActivities.map(a=>a['STATUS DO PROJETO'] || 'DEFAULT'))];
+            const daysInMonth = new Date(currentYear,currentMonth+1,0).getDate();
+            const labels = Array.from({length:daysInMonth},(_,i)=>i+1);
+
+            let datasets=[];
+            statuses.forEach(status=>{
+                let data=[];
+                for(let d=1; d<=daysInMonth; d++){
+                    const count = rawActivities.filter(a=>{
+                        const date=parseDate(a['DATA FINAL']);
+                        return date && date.getDate()===d && date.getMonth()===currentMonth && a['STATUS DO PROJETO']===status;
+                    }).length;
+                    data.push(count);
+                }
+                datasets.push({ label: status, data:data, backgroundColor: STATUS_COLORS[status] || STATUS_COLORS['DEFAULT'] });
+            });
+
+            if(chartInstance) chartInstance.destroy();
+            const ctx = document.getElementById('activitiesChart').getContext('2d');
+            chartInstance = new Chart(ctx,{
+                type:'bar',
+                data:{ labels: labels, datasets: datasets },
+                options:{ responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true } } }
+            });
+
+            const total = rawActivities.length;
+            const avg = (total/daysInMonth).toFixed(1);
+            document.getElementById('totalActivities').innerText=total;
+            document.getElementById('avgActivities').innerText=avg;
+
+            updateDurationChart();
+            updateSupervisorChart();
+        }
+
+        function updateDurationChart(){
+            const siteGroups = {};
+            rawActivities.forEach(a=>{
+                const site = a['SITE'] || 'N/A';
+                const start = parseDate(a['DATA INICIAL']);
+                const end = parseDate(a['DATA FINAL']);
+                if(!start || !end) return;
+                const duration = (end-start)/(1000*3600*24);
+                if(!siteGroups[site]) siteGroups[site]=[];
+                siteGroups[site].push(duration);
+            });
+
+            const labels = Object.keys(siteGroups);
+            const data = labels.map(site=>{
+                const arr = siteGroups[site];
+                return arr.reduce((a,b)=>a+b,0)/arr.length;
+            });
+
+            if(durationChartInstance) durationChartInstance.destroy();
+            const ctx = document.getElementById('durationChart').getContext('2d');
+            durationChartInstance = new Chart(ctx,{
+                type:'bar',
+                data:{ labels:labels, datasets:[{label:'Duração Média (dias)', data:data, backgroundColor:'rgb(79,70,229)'}] },
+                options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+            });
+        }
+
+        function updateSupervisorChart(){
+            const supervisors = [...new Set(rawActivities.map(a=>a['SUPERVISOR']||'N/A'))];
+            const data = supervisors.map(sup=>{
+                const arr = rawActivities.filter(a=>a['SUPERVISOR']===sup);
+                const completed = arr.filter(a=>a['STATUS DO PROJETO']==='INSTALADO').length;
+                return ((completed/arr.length)*100).toFixed(1);
+            });
+            if(supervisorChartInstance) supervisorChartInstance.destroy();
+            const ctx = document.getElementById('supervisorChart').getContext('2d');
+            supervisorChartInstance = new Chart(ctx,{
+                type:'bar',
+                data:{ labels:supervisors, datasets:[{label:'% Concluído', data:data, backgroundColor:'rgb(16,185,129)'}] },
+                options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, max:100 } } }
+            });
+        }
+
+        async function analyzeSupervisorData(){
+            if(!OPENAI_API_KEY){ alert("Adicione a chave da OpenAI!"); return; }
+            const summary = supervisorsSummary();
+            document.getElementById('supervisorAnalysisText').innerText='Processando análise...';
+            const prompt = `Analise os seguintes dados de supervisores e forneça insights: ${summary}`;
+            const response = await fetch(apiUrl,{
+                method:'POST',
+                headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+OPENAI_API_KEY },
+                body: JSON.stringify({ model:OPENAI_MODEL, messages:[{role:'user',content:prompt}], max_tokens:300 })
+            });
+            const data = await response.json();
+            const msg = data?.choices?.[0]?.message?.content || 'Sem resposta da IA.';
+            document.getElementById('supervisorAnalysisText').innerText=msg;
+        }
+
+        function supervisorsSummary(){
+            const supervisors = [...new Set(rawActivities.map(a=>a['SUPERVISOR']||'N/A'))];
+            let summary='';
+            supervisors.forEach(sup=>{
+                const arr = rawActivities.filter(a=>a['SUPERVISOR']===sup);
+                const installed = arr.filter(a=>a['STATUS DO PROJETO']==='INSTALADO').length;
+                const total = arr.length;
+                summary+=`Supervisor: ${sup}, Concluído: ${installed}/${total} (${((installed/total)*100).toFixed(1)}%), `;
+            });
+            return summary;
+        }
+
+        async function identifyBottlenecks(){
+            if(!OPENAI_API_KEY){ alert("Adicione a chave da OpenAI!"); return; }
+            document.getElementById('bottlenecksResult').innerHTML='<p class="text-gray-500">Processando análise de gargalos...</p>';
+            const bottleneckStatuses = ['RETIRANDO PENDÊNCIAS','PROGRAMADO'];
+            const filtered = rawActivities.filter(a=>bottleneckStatuses.includes(a['STATUS DO PROJETO']));
+            const summary = filtered.map(a=>`Supervisor: ${a['SUPERVISOR']}, Cidade: ${a['CIDADE']}, SITE: ${a['SITE']}, Status: ${a['STATUS DO PROJETO']}`).join('\n');
+
+            const prompt = `Identifique os 5 principais gargalos desta lista de atividades: ${summary}`;
+            const response = await fetch(apiUrl,{
+                method:'POST',
+                headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+OPENAI_API_KEY },
+                body: JSON.stringify({ model:OPENAI_MODEL, messages:[{role:'user',content:prompt}], max_tokens:300 })
+            });
+            const data = await response.json();
+            const msg = data?.choices?.[0]?.message?.content || 'Sem resposta da IA.';
+            document.getElementById('bottlenecksResult').innerHTML=`<pre class="text-sm text-gray-700">${msg}</pre>`;
+        }
+
+        // Inicialização
+        generateCalendar();
+    </script>
+</body>
+</html>
