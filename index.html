@@ -769,48 +769,21 @@
                 console.error("Erro na análise estruturada da IA:", error);
             }
         }
-        // --- FUNÇÃO DE INICIALIZAÇÃO E UPLOAD ---
-        function initApp() {
-            // Renderiza o calendário logo no início
-            renderCalendar();
 
+
+        // --- FUNÇÃO DE INICIALIZAÇÃO E UPLOAD ---
+        
+        function initApp() {
+            renderCalendar();
+            
             const fileInput = document.getElementById('csvFileInput');
             const fileStatus = document.getElementById('fileStatus');
-
-            // Garante que funções globais estejam acessíveis
+            
+            // Corrige o escopo do onclick do HTML
             window.changeMonth = changeMonth;
             window.analyzeSupervisorData = analyzeSupervisorData;
             window.identifyBottlenecks = identifyBottlenecks;
 
-            // --- CSV de Exemplo (com crases para evitar erro de sintaxe) ---
-            const exampleCSV = `
-        SITE,Informações,CIDADE,UF,COORDENADOR,SUPERVISOR,EQUIPE,RETIRADA DO MATERIAL,DATA INICIAL,DATA FINAL,STATUS DO PROJETO,Outros
-        PTA0045,Levar RB,Petrolina,PE,FERNANDO,Joao,Jose Welton,22/10/2025,22/10/2025,24/10/2025,INSTALADO,MOCK
-        PTA0042,Levar RB da Sede,Petrolina,PE,FERNANDO,Joao,Jose Welton,23/10/2025,24/10/2025,25/10/2025,PROGRAMADO,MOCK
-        PTA0003,Instalação de Kit radio,Petrolina,PE,FERNANDO,Joao,Jose Welton,24/10/2025,25/10/2025,28/10/2025,INSTALADO,MOCK
-        JUO0015.1,Equipe deve ir p/ site,Juazeiro,BA,FERNANDO,Joao,Jose Welton,29/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
-        PTA0044,Instalação de Kit radio,Petrolina,PE,SUPERVISOR ES,Leonardo,Cleverton,20/10/2025,21/10/2025,23/10/2025,PROGRAMADO,MOCK
-        VIS0006,Fazer enlace radio,Vertentes,PE,SUPERVISOR ES,Leonardo,Cleverton,25/10/2025,27/10/2025,28/10/2025,RETIRANDO PENDÊNCIAS,MOCK
-        VTS0004,Comunicar c/ Elétrica,Capela Nova,Vertentes,PE,SUPERVISOR ES,Leonardo,Cleverton,28/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
-        GVT0012.1,Instalar o Enlace,Gravata,PE,SUPERVISOR ES,Leonardo,Cleverton,29/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
-        PTA0046,Instalar Kit radio,Petrolina,PE,SUPERVISOR ES,Leonardo,Frankleomar,20/10/2025,21/10/2025,23/10/2025,PROGRAMADO,MOCK
-        JRO0005,Instalação kit rádio,Jeremoabo,BA,SUPERVISOR ES,Leonardo,Frankleomar,23/10/2025,24/10/2025,27/10/2025,PROGRAMADO,MOCK
-        PSS0005,Levar SW p/ ser instalado,Cutias,Passira-PE,SUPERVISOR ES,Leonardo,Frankleomar,29/10/2025,29/10/2025,29/10/2025,RETIRANDO PENDÊNCIAS,MOCK
-        PTA0049,Instalação de Kit radio,Petrolina,PE,SUPERVISOR ES,Natanael,Jose Welton,20/10/2025,21/10/2025,22/10/2025,INSTALADO,MOCK
-        `;
-
-            // Define o mês e ano do exemplo
-            currentMonth = 9; // Outubro (0-indexado)
-            currentYear = 2025;
-
-            try {
-                processCSV(exampleCSV);
-                console.log("CSV de exemplo carregado com sucesso!");
-            } catch (error) {
-                console.error("Erro ao processar CSV de exemplo:", error);
-            }
-
-            // Evento de upload de CSV real
             fileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file) {
@@ -828,10 +801,50 @@
                     reader.readAsText(file);
                 }
             });
-        }
+            // Simula o carregamento inicial de um CSV de exemplo para demonstração
+            const exampleCSV = `SITE,Informações,CIDADE,UF,COORDENADOR,SUPERVISOR,Equipe,RETIRADA DO MATERIAL,DATA INICIAL,DATA FINAL,STATUS DO PROJETO,Outros
+PTA0045,Levar RB, Petrolina,PE,FERNANDO,Joao,Jose Welton,22/10/2025,22/10/2025,24/10/2025,INSTALADO,MOCK
+PTA0042,Levar RB da Sede, Petrolina,PE,FERNANDO,Joao,Jose Welton,23/10/2025,24/10/2025,25/10/2025,PROGRAMADO,MOCK
+PTA0003,Instalação de Kit radio, Petrolina,PE,FERNANDO,Joao,Jose Welton,24/10/2025,25/10/2025,28/10/2025,INSTALADO,MOCK
+JUO0015.1,Equipe deve ir p/ site, Juazeiro,BA,FERNANDO,Joao,Jose Welton,29/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+PTA0044,Instalação de Kit radio, Petrolina,PE,SUPERVISOR ES,Leonardo,Cleverton,20/10/2025,21/10/2025,23/10/2025,PROGRAMADO,MOCK
+VIS0006,Fazer enlace radio, Vertentes,PE,SUPERVISOR ES,Leonardo,Cleverton,25/10/2025,27/10/2025,28/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+VTS0004,Comunicar c/ Eletrica, Capela Nova, Vertentes,PE,SUPERVISOR ES,Leonardo,Cleverton,28/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+GVT0012.1,Instalar o Enlace, Gravata,PE,SUPERVISOR ES,Leonardo,Cleverton,29/10/2025,29/10/2025,30/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+PTA0046,Instalar Kit radio, Petrolina,PE,SUPERVISOR ES,Leonardo,Frankleomar,20/10/2025,21/10/2025,23/10/2025,PROGRAMADO,MOCK
+JRO0005,Instalação kit rádio, Jeremoabo,BA,SUPERVISOR ES,Leonardo,Frankleomar,23/10/2025,24/10/2025,27/10/2025,PROGRAMADO,MOCK
+PSS0005,Levar SW p/ ser instalado, Cutias, Passira-PE,SUPERVISOR ES,Leonardo,Frankleomar,29/10/2025,29/10/2025,29/10/2025,RETIRANDO PENDÊNCIAS,MOCK
+PTA0049,Instalação de Kit radio, Petrolina,PE,SUPERVISOR ES,Natanael,Jose Welton,20/10/2025,21/10/2025,22/10/2025,INSTALADO,MOCK`;            
 
-        // Inicializa o app após o carregamento da página
-        window.addEventListener("DOMContentLoaded", initApp);
-        </script>
-        </body>
-        </html>
+            // Define o mês e ano do CSV de exemplo
+            currentMonth = 9; // Outubro (0-indexado)
+            currentYear = 2025;
+
+            // Processa o CSV de exemplo
+            processCSV(exampleCSV);
+        } // <-- fechamento correto da função initApp()
+
+        // Inicialização da aplicação após o carregamento completo do DOM
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+
+    <!-- Botão para gerar link do dashboard -->
+    <div class="mt-6 text-center mb-10">
+        <button id="generateLinkBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+            Gerar Link do Dashboard
+        </button>
+        <p id="generatedLink" class="mt-2 text-sm text-gray-700 break-all"></p>
+    </div>
+
+    <script>
+        const generateLinkBtn = document.getElementById('generateLinkBtn');
+        const generatedLink = document.getElementById('generatedLink');
+
+        generateLinkBtn.addEventListener('click', () => {
+            const url = window.location.href;
+            generatedLink.innerHTML = `Link do Dashboard: <a href="${url}" target="_blank" class="text-blue-600 underline">${url}</a>`;
+        });
+    </script>
+
+</body>
+</html>
